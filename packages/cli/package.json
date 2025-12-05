@@ -1,0 +1,17 @@
+{
+  "name": "@gecko/cli",
+  "version": "0.0.1",
+  "module": "index.ts",
+  "type": "module",
+  "dependencies": {
+    "@gecko/core": "workspace:*",
+    "@gecko/rules-default": "workspace:*",
+    "commander": "^14.0.2"
+  },
+  "devDependencies": {
+    "bun-types": "latest"
+  },
+  "bin": {
+    "gecko": "./index.ts"
+  }
+}

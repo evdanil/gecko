@@ -1,0 +1,36 @@
+{
+  "name": "@gecko/vscode",
+  "displayName": "GECKO Configuration Validator",
+  "description": "Validates network configurations using GECKO engine.",
+  "version": "0.0.1",
+  "publisher": "gecko",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "main": "./dist/extension.js",
+  "categories": [
+    "Linters"
+  ],
+  "activationEvents": [
+    "onLanguage:plaintext"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "gecko.scan",
+        "title": "GECKO: Scan Configuration"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "bun build ./src/extension.ts --outdir=dist --target=node --external vscode",
+    "watch": "bun build ./src/extension.ts --outdir=dist --target=node --external vscode --watch"
+  },
+  "dependencies": {
+    "@gecko/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "@types/node": "^20.0.0"
+  }
+}
