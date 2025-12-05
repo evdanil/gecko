@@ -66,11 +66,47 @@ bun run --filter @gecko/core build
 bun test
 ```
 
-**Build the CLI:**
+**Build the CLI Binary:**
 ```bash
-bun run --filter @gecko/cli build
-# Run the binary
-./packages/cli/dist/gecko --help
+bun build packages/cli/index.ts --compile --outfile gecko.exe
+```
+
+**Run the Binary:**
+```bash
+# Windows
+.\gecko.exe test-config.txt
+
+# Linux/Mac
+./gecko.exe test-config.txt
+```
+
+### 4. CLI Usage & Options
+
+The compiled binary supports the following options:
+
+```text
+Usage: gecko [options] <file>
+
+Arguments:
+  file                   Path to the configuration file to scan
+
+Options:
+  -f, --format <format>  Output format: "json" (default) or "sarif"
+  --ast                  Output the Abstract Syntax Tree (AST) instead of validation results
+  -V, --version          Output the version number
+  -h, --help             Display help for command
+```
+
+**Examples:**
+```bash
+# Scan and output JSON (Default)
+.\gecko.exe network.conf
+
+# Scan and generate SARIF report for CI/CD
+.\gecko.exe network.conf --format sarif > results.sarif
+
+# Inspect how GECKO parses a file (Debug mode)
+.\gecko.exe network.conf --ast
 ```
 
 ---
