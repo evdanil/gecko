@@ -3,23 +3,24 @@
 
 ![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)
 ![TypeScript](https://img.shields.io/badge/Language-TypeScript-3178C6)
+![Runtime](https://img.shields.io/badge/Runtime-Bun-000000)
 ![Status](https://img.shields.io/badge/Status-Pre--Alpha-red)
 
 > **"Adheres to any surface. Functions even when parts are missing."**
 
 **GECKO** is an isomorphic, fault-tolerant scanning engine designed to validate complex device configurations (Cisco IOS, Juniper, YAML, etc.) against business and security compliance rules.
 
-Unlike traditional static analysis tools that require complete files to function, GECKO is designed with **Permissive Parsing**, allowing it to scan code snippets, partial configurations, and flattened text directly in the IDE or CI/CD pipeline.
+Built with **Bun** for extreme speed ⚡️, it features a **Permissive Parser** allowing it to scan code snippets, partial configurations, and flattened text directly in the IDE or CI/CD pipeline without crashing.
 
 ---
 
 ## 🏗 Architecture
 
-GECKO is built as a TypeScript Monorepo to ensure the exact same validation logic runs in your editor and your build pipeline.
+GECKO is a **TypeScript Monorepo** managed by Bun workspaces.
 
 -   **`@gecko/core`**: The brain. Contains the "Schema-Aware" Parser and the Rule Evaluator. Zero dependencies on VS Code or CLI.
 -   **`@gecko/cli`**: The headless runner. Scans files, directories, and outputs industry-standard **SARIF** reports for CI/CD integration.
--   **`@gecko/vscode`**: The editor extension. Provides real-time "red squiggles" and context-aware fixes while you type.
+-   **`@gecko/vscode`**: The editor extension. Provides real-time "red squiggles" and context-aware fixes.
 
 ## ✨ Key Features
 
@@ -27,34 +28,52 @@ GECKO is built as a TypeScript Monorepo to ensure the exact same validation logi
     GECKO can reconstruct context from partial snippets. If you paste an `ip address` command without an `interface` block, GECKO detects the "Orphan" state and applies relevant checks without crashing.
 
 -   **Isomorphic Logic:**
-    Write a rule once. It runs in the VS Code Extension (client-side) and the Node.js CLI (server-side).
+    Write a rule once. It runs in the VS Code Extension (client-side) and the CLI (server-side).
 
 -   **Enterprise Rule Metadata:**
-    Rules support rich tagging for organizational compliance:
-    -   `level`: Error, Warning, Info
-    -   `obu`: Operating Business Unit
-    -   `owner`: Team/User responsible
-    -   `compliance_code`: ISO/NIST/CIS references
+    Rules support rich tagging: `level`, `obu` (Business Unit), `owner`, and `compliance_code`.
 
-## 🚀 Getting Started (Development)
+---
 
-This project uses **pnpm** workspaces.
+## 🚀 Getting Started
 
-1.  **Clone the repo**
-    ```bash
-    git clone https://github.com/your-org/gecko.git
-    cd gecko
-    ```
+This project uses **[Bun](https://bun.sh)** for package management, testing, and bundling.
 
-2.  **Install dependencies**
-    ```bash
-    pnpm install
-    ```
+### 1. Prerequisites
+Install Bun:
+```bash
+curl -fsSL https://bun.sh/install | bash
+# Windows: powershell -c "irm bun.sh/install.ps1 | iex"
+```
 
-3.  **Build Core**
-    ```bash
-    pnpm --filter @gecko/core build
-    ```
+### 2. Installation
+Clone the repo and install dependencies (fast):
+```bash
+git clone https://github.com/your-org/gecko.git
+cd gecko
+bun install
+```
+
+### 3. Development Workflow
+
+**Build the Core Engine:**
+```bash
+bun run --filter @gecko/core build
+```
+
+**Run Unit Tests (Instant):**
+```bash
+bun test
+```
+
+**Build the CLI:**
+```bash
+bun run --filter @gecko/cli build
+# Run the binary
+./packages/cli/dist/gecko --help
+```
+
+---
 
 ## 📝 Rule Definition Example
 
@@ -69,10 +88,15 @@ export const InterfaceDescriptionRule = {
         obu: "Infra",
         description: "Public interfaces must have a description."
     },
+    // Selector: "Find any section starting with 'interface Gigabit'"
     selector: "section[key^='interface Gigabit']",
+    
+    // Logic
     check: (node) => {
         const hasDesc = node.children.some(c => c.key === 'description');
-        return hasDesc ? { passed: true } : { passed: false, message: "Missing description" };
+        return hasDesc 
+            ? { passed: true } 
+            : { passed: false, message: "Missing description" };
     }
 }
 ```
@@ -86,3 +110,18 @@ The **GECKO Engine** (`@gecko/core`, `@gecko/cli`, `@gecko/vscode`) is released 
 -   ✅ You can integrate this into commercial CI/CD pipelines.
 
 See [LICENSE](./LICENSE) for details.
+```
+
+### Quick setup tip for Bun Workspaces
+When you create your `package.json` in the root folder, ensure you add the workspaces configuration so Bun knows where to look:
+
+**`package.json` (Root)**
+```json
+{
+  "name": "gecko-monorepo",
+  "module": "index.ts",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ]
+}
