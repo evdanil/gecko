@@ -33,7 +33,7 @@ export interface RuleResult {
     /**
      * Optional: The specific lines in the configuration where the issue was found.
      */
-     मांसloc?: {
+    loc?: {
         startLine: number;
         endLine: number;
     };

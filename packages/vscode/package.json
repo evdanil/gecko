@@ -1,36 +1,67 @@
 {
-  "name": "@gecko/vscode",
+  "name": "gecko-vscode",
   "displayName": "GECKO Configuration Validator",
   "description": "Validates network configurations using GECKO engine.",
   "version": "0.0.1",
   "publisher": "gecko",
   "engines": {
-    "vscode": "^1.80.0"
+    "vscode": "^1.75.0"
   },
   "main": "./dist/extension.js",
   "categories": [
-    "Linters"
+    "Linters",
+    "Programming Languages"
   ],
   "activationEvents": [
-    "onLanguage:plaintext"
+    "onLanguage:network-config",
+    "onLanguage:plaintext",
+    "onCommand:gecko.scan"
   ],
   "contributes": {
+    "languages": [
+      {
+        "id": "network-config",
+        "aliases": ["Network Config", "Cisco IOS", "Juniper"],
+        "extensions": [".conf", ".cfg", ".ios", ".junos", ".txt"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
     "commands": [
       {
         "command": "gecko.scan",
         "title": "GECKO: Scan Configuration"
+      },
+      {
+        "command": "gecko.setLanguage",
+        "title": "GECKO: Set as Network Config"
       }
-    ]
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "gecko.scan",
+          "group": "navigation",
+          "when": "editorTextFocus"
+        }
+      ]
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gecko/gecko.git"
   },
   "scripts": {
-    "build": "bun build ./src/extension.ts --outdir=dist --target=node --external vscode",
-    "watch": "bun build ./src/extension.ts --outdir=dist --target=node --external vscode --watch"
+    "build": "bun x esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
+    "watch": "bun x esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --watch",
+    "package": "bun run build && vsce package --no-dependencies"
   },
   "dependencies": {
-    "@gecko/core": "workspace:*"
+    "@gecko/core": "workspace:*",
+    "@gecko/rules-default": "workspace:*"
   },
   "devDependencies": {
+    "@types/node": "^20.0.0",
     "@types/vscode": "^1.80.0",
-    "@types/node": "^20.0.0"
+    "@vscode/vsce": "^3.7.1"
   }
 }
