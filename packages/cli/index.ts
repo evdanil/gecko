@@ -11,10 +11,15 @@ program
   .name('gecko')
   .description('Generic Engine for Configuration Knowledge & Oversight')
   .version('0.0.1')
-  .argument('<file>', 'Path to the configuration file')
+  .argument('[file]', 'Path to the configuration file')
   .option('--ast', 'Output the AST instead of rule results')
   .option('-f, --format <format>', 'Output format (json, sarif)', 'json')
   .action(async (file, options) => {
+    if (!file) {
+      program.help();
+      return;
+    }
+
     try {
       // Check if file exists/readable happens in readFile
       const content = await readFile(file, 'utf-8');
