@@ -25,6 +25,18 @@ describe('Default Rules Integration', () => {
         expect(failures).toHaveLength(0);
     });
 
+    test('valid-long.txt should pass all network rules', async () => {
+        const configPath = join(fixturesDir, 'valid-long.txt');
+        const config = await readFile(configPath, 'utf-8');
+        
+        const nodes = parser.parse(config);
+        const results = engine.run(nodes, rules);
+
+        const failures = results.filter(r => !r.passed);
+        
+        expect(failures).toHaveLength(0);
+    });
+
     test('invalid-ip.txt should detect multicast and broadcast violations', async () => {
         const configPath = join(fixturesDir, 'invalid-ip.txt');
         const config = await readFile(configPath, 'utf-8');
