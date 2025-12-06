@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { SchemaAwareParser, RuleEngine } from '@gecko/core';
-import { NoMulticastBroadcastIp, allRules } from '../src/index';
+import { NoMulticastBroadcastIp, OspfNetworkBestPractice, allRules } from '../src/index';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 
@@ -89,5 +89,106 @@ describe('All Rules Integration', () => {
         const errors = results.filter(r => !r.passed && r.level === 'error');
 
         expect(errors).toHaveLength(0);
+    });
+});
+
+describe('OSPF Network Best Practice (NET-OSPF-001)', () => {
+    const parser = new SchemaAwareParser();
+    const engine = new RuleEngine();
+    const ospfRules = [OspfNetworkBestPractice];
+
+    test('should pass with interface IP and 0.0.0.0 wildcard', () => {
+        const config = `
+interface Loopback0
+ ip address 1.1.1.1 255.255.255.255
+interface GigabitEthernet0/0
+ ip address 10.0.0.1 255.255.255.0
+router ospf 1
+ network 1.1.1.1 0.0.0.0 area 0
+ network 10.0.0.1 0.0.0.0 area 0
+`;
+        const nodes = parser.parse(config);
+        const results = engine.run(nodes, ospfRules);
+
+        const failures = results.filter(r => !r.passed);
+        expect(failures).toHaveLength(0);
+    });
+
+    test('should warn when using broad wildcard instead of exact match', () => {
+        const config = `
+interface GigabitEthernet0/0
+ ip address 192.168.0.1 255.255.255.0
+router ospf 1
+ network 192.168.0.0 0.0.0.255 area 0
+`;
+        const nodes = parser.parse(config);
+        const results = engine.run(nodes, ospfRules);
+
+        const failures = results.filter(r => !r.passed);
+        expect(failures).toHaveLength(1);
+        expect(failures[0].message).toContain('broad wildcard');
+        expect(failures[0].ruleId).toBe('NET-OSPF-001');
+    });
+
+    test('should warn when network IP does not match any interface', () => {
+        const config = `
+interface GigabitEthernet0/0
+ ip address 10.0.0.1 255.255.255.0
+router ospf 1
+ network 192.168.1.1 0.0.0.0 area 0
+`;
+        const nodes = parser.parse(config);
+        const results = engine.run(nodes, ospfRules);
+
+        const failures = results.filter(r => !r.passed);
+        expect(failures).toHaveLength(1);
+        expect(failures[0].message).toContain('does not match any configured interface IP');
+    });
+
+    test('should warn when broad wildcard does not match any interface subnet', () => {
+        const config = `
+interface GigabitEthernet0/0
+ ip address 10.0.0.1 255.255.255.0
+router ospf 1
+ network 192.168.0.0 0.0.0.255 area 0
+`;
+        const nodes = parser.parse(config);
+        const results = engine.run(nodes, ospfRules);
+
+        const failures = results.filter(r => !r.passed);
+        expect(failures).toHaveLength(1);
+        // Should warn about both: broad wildcard AND no matching interface subnet
+        expect(failures[0].message).toContain('broad wildcard');
+        expect(failures[0].message).toContain('does not match any configured interface subnet');
+    });
+
+    test('should pass when no network statements in OSPF', () => {
+        const config = `
+router ospf 1
+ router-id 1.1.1.1
+`;
+        const nodes = parser.parse(config);
+        const results = engine.run(nodes, ospfRules);
+
+        const failures = results.filter(r => !r.passed);
+        expect(failures).toHaveLength(0);
+    });
+
+    test('should handle multiple OSPF network issues', () => {
+        const config = `
+interface Loopback0
+ ip address 1.1.1.1 255.255.255.255
+router ospf 1
+ network 2.2.2.2 0.0.0.0 area 0
+ network 10.0.0.0 0.0.0.7 area 1
+`;
+        const nodes = parser.parse(config);
+        const results = engine.run(nodes, ospfRules);
+
+        const failures = results.filter(r => !r.passed);
+        expect(failures).toHaveLength(1);
+        // Should contain warnings for both network statements
+        expect(failures[0].message).toContain('2.2.2.2');
+        expect(failures[0].message).toContain('10.0.0.0 0.0.0.7');
     });
 });

@@ -42,13 +42,13 @@ export interface RuleResult {
 /**
  * Contextual information passed to a rule's check function.
  * This might include global settings, other AST nodes, or environmental data.
- * For now, it's a basic placeholder.
  */
 export interface Context {
-    // Add properties as needed during engine implementation
-    // Example: globalVariables: Record<string, any>;
-    // Example: fileMetadata: { path: string; };
-    // Example: getNodesOfType: (type: NodeType) => ConfigNode[];
+    /**
+     * The full configuration AST. Allows rules to perform cross-reference
+     * validation (e.g., checking if an IP referenced in OSPF exists on an interface).
+     */
+    ast?: ConfigNode[];
 }
 
 /**

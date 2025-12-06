@@ -24,11 +24,10 @@ export class RuleEngine {
             for (const rule of rules) {
                 if (this.matchesSelector(node, rule.selector)) {
                     try {
-                        // Create a specific context for this check if needed, 
-                        // or pass the global one.
+                        // Create context with full AST for cross-reference validation
                         const ruleContext: Context = {
                             ...context,
-                            // Add dynamic context here if needed, e.g. parent node access (if not in AST)
+                            ast: nodes,
                         };
 
                         const result = rule.check(node, ruleContext);

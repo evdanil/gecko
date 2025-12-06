@@ -1,5 +1,5 @@
 import { IRule } from '@gecko/core';
-import { NoMulticastBroadcastIp, InterfaceDescriptionRequired, NoPlaintextPasswords, SSHVersion2Required, VTYAccessClassRequired } from './network-rules';
+import { NoMulticastBroadcastIp, InterfaceDescriptionRequired, NoPlaintextPasswords, SSHVersion2Required, VTYAccessClassRequired, OspfNetworkBestPractice } from './network-rules';
 
 export * from './network-rules';
 
@@ -10,4 +10,5 @@ export const allRules: IRule[] = [
     NoPlaintextPasswords,
     SSHVersion2Required,
     VTYAccessClassRequired,
+    OspfNetworkBestPractice,
 ];
