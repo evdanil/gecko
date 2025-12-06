@@ -107,7 +107,44 @@ Options:
 
 # Inspect how GECKO parses a file (Debug mode)
 .\gecko.exe network.conf --ast
+
+# Quiet mode - only show failures
+.\gecko.exe network.conf --quiet
 ```
+
+### 5. VS Code Extension
+
+The VS Code extension provides real-time validation as you edit network configurations.
+
+**Build the Extension:**
+```bash
+cd packages/vscode
+bun run build
+```
+
+**Package as VSIX:**
+```bash
+cd packages/vscode
+bun run package
+# Creates: gecko-vscode-0.0.1.vsix
+```
+
+**Install the VSIX:**
+```bash
+code --install-extension packages/vscode/gecko-vscode-0.0.1.vsix
+```
+
+**Development (Extension Host):**
+1. Open VS Code in `packages/vscode`
+2. Press `F5` to launch Extension Development Host
+3. Open any `.conf`, `.cfg`, or `.ios` file to see validation
+
+**Extension Features:**
+- Real-time scanning with 300ms debounce
+- Status bar with error/warning counts
+- Right-click context menu for manual scans
+- Scan selected text only
+- Debug logging toggle (`GECKO: Toggle Debug Logging`)
 
 ---
 
@@ -146,18 +183,3 @@ The **GECKO Engine** (`@gecko/core`, `@gecko/cli`, `@gecko/vscode`) is released 
 -   ✅ You can integrate this into commercial CI/CD pipelines.
 
 See [LICENSE](./LICENSE) for details.
-```
-
-### Quick setup tip for Bun Workspaces
-When you create your `package.json` in the root folder, ensure you add the workspaces configuration so Bun knows where to look:
-
-**`package.json` (Root)**
-```json
-{
-  "name": "gecko-monorepo",
-  "module": "index.ts",
-  "type": "module",
-  "workspaces": [
-    "packages/*"
-  ]
-}

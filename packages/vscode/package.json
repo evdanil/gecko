@@ -1,47 +1,100 @@
 {
   "name": "gecko-vscode",
   "displayName": "GECKO Configuration Validator",
-  "description": "Validates network configurations using GECKO engine.",
+  "description": "Real-time network configuration validation for Cisco IOS, Juniper, and more.",
   "version": "0.0.1",
   "publisher": "gecko",
   "engines": {
-    "vscode": "^1.75.0"
+    "vscode": "^1.80.0"
   },
   "main": "./dist/extension.js",
   "categories": [
     "Linters",
     "Programming Languages"
   ],
+  "keywords": [
+    "cisco",
+    "network",
+    "configuration",
+    "linter",
+    "validator",
+    "ios",
+    "juniper"
+  ],
   "activationEvents": [
     "onLanguage:network-config",
-    "onLanguage:plaintext",
-    "onCommand:gecko.scan"
+    "onLanguage:plaintext"
   ],
   "contributes": {
     "languages": [
       {
         "id": "network-config",
-        "aliases": ["Network Config", "Cisco IOS", "Juniper"],
-        "extensions": [".conf", ".cfg", ".ios", ".junos", ".txt"],
+        "aliases": [
+          "Network Config",
+          "Cisco IOS",
+          "Juniper"
+        ],
+        "extensions": [
+          ".conf",
+          ".cfg",
+          ".ios",
+          ".junos"
+        ],
+        "filenames": [
+          "startup-config",
+          "running-config"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],
     "commands": [
       {
         "command": "gecko.scan",
-        "title": "GECKO: Scan Configuration"
+        "title": "Scan Configuration",
+        "category": "GECKO",
+        "icon": "$(search)"
+      },
+      {
+        "command": "gecko.scanSelection",
+        "title": "Scan Selected Text",
+        "category": "GECKO",
+        "icon": "$(selection)"
       },
       {
         "command": "gecko.setLanguage",
-        "title": "GECKO: Set as Network Config"
+        "title": "Set as Network Config",
+        "category": "GECKO"
+      },
+      {
+        "command": "gecko.toggleDebug",
+        "title": "Toggle Debug Logging",
+        "category": "GECKO"
       }
     ],
     "menus": {
       "editor/context": [
         {
           "command": "gecko.scan",
-          "group": "navigation",
+          "group": "1_gecko@1",
           "when": "editorTextFocus"
+        },
+        {
+          "command": "gecko.scanSelection",
+          "group": "1_gecko@2",
+          "when": "editorHasSelection"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "gecko.scan",
+          "group": "navigation",
+          "when": "resourceExtname =~ /^\\.(conf|config|cfg|ios|junos|txt)$/"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "gecko.scanSelection",
+          "when": "editorHasSelection"
         }
       ]
     }
