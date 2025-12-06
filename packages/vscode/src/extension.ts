@@ -6,10 +6,38 @@ import { allRules } from '@gecko/rules-default';
 // Extension API - Allows other extensions to register custom rules
 // ============================================================================
 const externalRules: IRule[] = [];
+const disabledRuleIds = new Set<string>();
 
-/** Get all rules: default + externally registered */
+/**
+ * Get all rules with override and disable logic.
+ * - Same ID: external rule overrides default (last registration wins)
+ * - Disabled rules are excluded
+ */
 function getAllRules(): IRule[] {
-    return [...allRules, ...externalRules];
+    const ruleMap = new Map<string, IRule>();
+
+    // Default rules first
+    for (const rule of allRules) {
+        if (!disabledRuleIds.has(rule.id)) {
+            ruleMap.set(rule.id, rule);
+        }
+    }
+
+    // External rules override by ID
+    for (const rule of externalRules) {
+        if (!disabledRuleIds.has(rule.id)) {
+            ruleMap.set(rule.id, rule);
+        }
+    }
+
+    return Array.from(ruleMap.values());
+}
+
+/** Re-scan active editor after rule changes */
+function rescanActiveEditor(): void {
+    if (vscode.window.activeTextEditor) {
+        scheduleScan(vscode.window.activeTextEditor.document, 0);
+    }
 }
 
 // ============================================================================
@@ -95,22 +123,53 @@ export function activate(context: vscode.ExtensionContext) {
         return {
             /**
              * Register custom rules from another extension.
+             * Rules with the same ID as default rules will override them.
              * @param rules Array of IRule objects to add
              */
             registerRules: (rules: IRule[]) => {
                 externalRules.push(...rules);
-                log(`Registered ${rules.length} external rule(s)`);
-
-                // Re-scan active editor to apply new rules
-                if (vscode.window.activeTextEditor) {
-                    scheduleScan(vscode.window.activeTextEditor.document, 0);
-                }
+                log(`Registered ${rules.length} external rule(s): ${rules.map(r => r.id).join(', ')}`);
+                rescanActiveEditor();
             },
+
+            /**
+             * Disable rules by ID. Disabled rules won't run during scans.
+             * @param ruleIds Array of rule IDs to disable
+             */
+            disableRules: (ruleIds: string[]) => {
+                for (const id of ruleIds) {
+                    disabledRuleIds.add(id);
+                }
+                log(`Disabled ${ruleIds.length} rule(s): ${ruleIds.join(', ')}`);
+                rescanActiveEditor();
+            },
+
+            /**
+             * Re-enable previously disabled rules.
+             * @param ruleIds Array of rule IDs to enable
+             */
+            enableRules: (ruleIds: string[]) => {
+                for (const id of ruleIds) {
+                    disabledRuleIds.delete(id);
+                }
+                log(`Enabled ${ruleIds.length} rule(s): ${ruleIds.join(', ')}`);
+                rescanActiveEditor();
+            },
+
+            /**
+             * Get list of currently disabled rule IDs.
+             */
+            getDisabledRules: () => Array.from(disabledRuleIds),
 
             /**
              * Get count of registered external rules.
              */
             getExternalRuleCount: () => externalRules.length,
+
+            /**
+             * Get count of total active rules (default + external - disabled).
+             */
+            getActiveRuleCount: () => getAllRules().length,
         };
 
     } catch (error) {

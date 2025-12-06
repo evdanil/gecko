@@ -235,8 +235,36 @@ The GECKO extension exports the following API:
 
 | Method | Description |
 |--------|-------------|
-| `registerRules(rules: IRule[])` | Register an array of custom rules. Triggers re-scan of active editor. |
-| `getExternalRuleCount()` | Returns the number of externally registered rules. |
+| `registerRules(rules: IRule[])` | Register custom rules. Rules with same ID as defaults will override them. |
+| `disableRules(ruleIds: string[])` | Disable rules by ID. They won't run during scans. |
+| `enableRules(ruleIds: string[])` | Re-enable previously disabled rules. |
+| `getDisabledRules()` | Returns array of currently disabled rule IDs. |
+| `getExternalRuleCount()` | Returns count of registered external rules. |
+| `getActiveRuleCount()` | Returns count of total active rules (default + external - disabled). |
+
+### Rule Override & Disable
+
+**Override a default rule** by registering a rule with the same ID:
+
+```typescript
+// Replace the default NET-IP-001 with custom implementation
+geckoApi.registerRules([{
+    id: 'NET-IP-001',  // Same ID = override
+    selector: 'ip address',
+    metadata: { level: 'error', obu: 'MyCompany', owner: 'NetOps' },
+    check: (node) => { /* custom logic */ }
+}]);
+```
+
+**Disable rules** without replacing them:
+
+```typescript
+// Turn off specific rules
+geckoApi.disableRules(['NET-DOC-001', 'NET-SEC-003']);
+
+// Re-enable later if needed
+geckoApi.enableRules(['NET-DOC-001']);
+```
 
 ### Rule Interface
 
