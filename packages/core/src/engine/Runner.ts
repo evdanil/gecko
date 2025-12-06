@@ -24,10 +24,10 @@ export class RuleEngine {
             for (const rule of rules) {
                 if (this.matchesSelector(node, rule.selector)) {
                     try {
-                        // Create context with full AST for cross-reference validation
+                        // Create context with lazy AST getter for cross-reference validation
                         const ruleContext: Context = {
                             ...context,
-                            ast: nodes,
+                            getAst: () => nodes,
                         };
 
                         const result = rule.check(node, ruleContext);

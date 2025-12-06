@@ -414,8 +414,9 @@ export const OspfNetworkBestPractice: IRule = {
             }
         };
 
-        if (context.ast) {
-            collectInterfaceIps(context.ast);
+        const ast = context.getAst?.();
+        if (ast) {
+            collectInterfaceIps(ast);
         }
 
         // Find network statements in this OSPF section

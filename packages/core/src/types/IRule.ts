@@ -45,10 +45,11 @@ export interface RuleResult {
  */
 export interface Context {
     /**
-     * The full configuration AST. Allows rules to perform cross-reference
-     * validation (e.g., checking if an IP referenced in OSPF exists on an interface).
+     * Lazy getter for the full configuration AST. Only call this if your rule
+     * needs cross-reference validation (e.g., checking if an IP referenced in
+     * OSPF exists on an interface). Simple single-node rules should not use this.
      */
-    ast?: ConfigNode[];
+    getAst?: () => ConfigNode[];
 }
 
 /**
