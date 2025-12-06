@@ -148,6 +148,133 @@ code --install-extension packages/vscode/gecko-vscode-0.0.1.vsix
 
 ---
 
+## 🔌 Extension API: Custom Rules
+
+The GECKO VS Code extension exposes an API allowing other extensions to register custom/proprietary rules without modifying the core extension.
+
+### Creating a Custom Rules Extension
+
+**1. Create a new VS Code extension:**
+
+```bash
+npx yo code  # Select "New Extension (TypeScript)"
+cd my-gecko-rules
+```
+
+**2. Add dependencies to `package.json`:**
+
+```json
+{
+  "extensionDependencies": ["gecko.gecko-vscode"],
+  "devDependencies": {
+    "@gecko/core": "workspace:*"
+  }
+}
+```
+
+**3. Register rules in your extension:**
+
+```typescript
+// src/extension.ts
+import * as vscode from 'vscode';
+import type { IRule, ConfigNode, RuleResult } from '@gecko/core';
+
+const myProprietaryRules: IRule[] = [
+    {
+        id: 'PROP-BGP-001',
+        selector: 'router bgp',
+        metadata: {
+            level: 'warning',
+            obu: 'MyCompany',
+            owner: 'Network Team',
+            remediation: 'Ensure BGP neighbors have passwords configured.'
+        },
+        check: (node: ConfigNode): RuleResult => {
+            const hasPassword = node.children.some(child =>
+                child.id.toLowerCase().includes('password')
+            );
+
+            return {
+                passed: hasPassword,
+                message: hasPassword
+                    ? 'BGP authentication configured.'
+                    : 'BGP neighbors should have authentication configured.',
+                ruleId: 'PROP-BGP-001',
+                nodeId: node.id,
+                level: 'warning',
+                loc: node.loc
+            };
+        }
+    }
+];
+
+export async function activate(context: vscode.ExtensionContext) {
+    // Get GECKO extension API
+    const geckoExtension = vscode.extensions.getExtension('gecko.gecko-vscode');
+
+    if (!geckoExtension) {
+        vscode.window.showErrorMessage('GECKO extension not found');
+        return;
+    }
+
+    // Activate GECKO if not already active
+    const geckoApi = await geckoExtension.activate();
+
+    // Register custom rules
+    geckoApi.registerRules(myProprietaryRules);
+
+    vscode.window.showInformationMessage(
+        `Registered ${myProprietaryRules.length} proprietary GECKO rules`
+    );
+}
+```
+
+### API Reference
+
+The GECKO extension exports the following API:
+
+| Method | Description |
+|--------|-------------|
+| `registerRules(rules: IRule[])` | Register an array of custom rules. Triggers re-scan of active editor. |
+| `getExternalRuleCount()` | Returns the number of externally registered rules. |
+
+### Rule Interface
+
+Rules must implement the `IRule` interface from `@gecko/core`:
+
+```typescript
+interface IRule {
+    id: string;                    // Unique rule ID (e.g., 'PROP-001')
+    selector?: string;             // Node selector (e.g., 'router bgp', 'interface')
+    metadata: {
+        level: 'error' | 'warning' | 'info';
+        obu: string;               // Business unit
+        owner: string;             // Rule owner/team
+        remediation?: string;      // Fix instructions
+    };
+    check: (node: ConfigNode, context: Context) => RuleResult;
+}
+```
+
+### Cross-Reference Rules
+
+For rules that need to validate against the entire configuration (e.g., checking if OSPF networks match interface IPs), use the `context.getAst()` function:
+
+```typescript
+check: (node: ConfigNode, context: Context): RuleResult => {
+    const ast = context.getAst?.();  // Get full config AST
+
+    if (ast) {
+        // Search other parts of the configuration
+        // e.g., find all interface IPs
+    }
+
+    return { /* ... */ };
+}
+```
+
+---
+
 ## 📝 Rule Definition Example
 
 GECKO rules are flexible. They can be declarative or programmatic.

@@ -1,6 +1,16 @@
 import * as vscode from 'vscode';
-import { SchemaAwareParser, RuleEngine } from '@gecko/core';
+import { SchemaAwareParser, RuleEngine, IRule } from '@gecko/core';
 import { allRules } from '@gecko/rules-default';
+
+// ============================================================================
+// Extension API - Allows other extensions to register custom rules
+// ============================================================================
+const externalRules: IRule[] = [];
+
+/** Get all rules: default + externally registered */
+function getAllRules(): IRule[] {
+    return [...allRules, ...externalRules];
+}
 
 // ============================================================================
 // Singleton Instances - Reused across all scans to avoid GC pressure
@@ -81,6 +91,28 @@ export function activate(context: vscode.ExtensionContext) {
 
         log('GECKO extension activated');
 
+        // Return API for other extensions to register rules
+        return {
+            /**
+             * Register custom rules from another extension.
+             * @param rules Array of IRule objects to add
+             */
+            registerRules: (rules: IRule[]) => {
+                externalRules.push(...rules);
+                log(`Registered ${rules.length} external rule(s)`);
+
+                // Re-scan active editor to apply new rules
+                if (vscode.window.activeTextEditor) {
+                    scheduleScan(vscode.window.activeTextEditor.document, 0);
+                }
+            },
+
+            /**
+             * Get count of registered external rules.
+             */
+            getExternalRuleCount: () => externalRules.length,
+        };
+
     } catch (error) {
         console.error("GECKO Activation Error:", error);
         vscode.window.showErrorMessage("GECKO Extension failed to activate.");
@@ -121,7 +153,7 @@ function cmdScanSelection() {
 
     try {
         const nodes = parser.parse(text);
-        const results = engine.run(nodes, allRules);
+        const results = engine.run(nodes, getAllRules());
 
         const diagnostics: vscode.Diagnostic[] = [];
         let errorCount = 0;
@@ -281,7 +313,7 @@ function runScan(document: vscode.TextDocument, force: boolean) {
         }
 
         const nodes = parser.parse(text);
-        const results = engine.run(nodes, allRules);
+        const results = engine.run(nodes, getAllRules());
 
         // Check if this scan is still current (not superseded by newer scan)
         if (scanVersions.get(uri) !== currentVersion) {
