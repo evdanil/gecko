@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
 import { Command } from 'commander';
 import { SchemaAwareParser, RuleEngine } from '@gecko/core';
-import { allRules } from '@gecko/rules-default';
 import { readFile } from 'fs/promises';
-import { resolve } from 'path';
+import { resolve, dirname } from 'path';
 import { generateSarif } from './src/sarif';
+import { resolveRules, findConfigFile } from './src/config';
 
 const program = new Command();
 
@@ -16,13 +16,44 @@ program
   .option('--ast', 'Output the AST instead of rule results')
   .option('-f, --format <format>', 'Output format (json, sarif)', 'json')
   .option('-q, --quiet', 'Only output failures (suppress passed results)')
+  .option('-c, --config <path>', 'Path to config file (default: auto-detect)')
+  .option('--no-config', 'Ignore config file')
+  .option('-r, --rules <path>', 'Additional rules file to load')
+  .option('-d, --disable <ids>', 'Comma-separated rule IDs to disable', (val) => val.split(','))
+  .option('--list-rules', 'List all active rules and exit')
   .action(async (file, options) => {
-    if (!file) {
-      program.help();
-      return;
-    }
-
     try {
+      // Resolve rules from config + CLI options
+      const cwd = file ? dirname(resolve(file)) : process.cwd();
+      const rules = await resolveRules({
+        configPath: options.config,
+        noConfig: options.config === false, // --no-config sets this to false
+        rulesPath: options.rules,
+        disableIds: options.disable ?? [],
+        cwd,
+      });
+
+      // List rules mode
+      if (options.listRules) {
+        console.log('Active rules:\n');
+        for (const rule of rules) {
+          console.log(`  ${rule.id} [${rule.metadata.level}] - ${rule.metadata.obu}`);
+        }
+        console.log(`\nTotal: ${rules.length} rules`);
+
+        const configFile = findConfigFile(cwd);
+        if (configFile) {
+          console.log(`\nConfig file: ${configFile}`);
+        }
+        return;
+      }
+
+      // Require file for scanning
+      if (!file) {
+        program.help();
+        return;
+      }
+
       const filePath = resolve(file);
       const content = await readFile(filePath, 'utf-8');
       const parser = new SchemaAwareParser();
@@ -34,7 +65,7 @@ program
       }
 
       const engine = new RuleEngine();
-      let results = engine.run(nodes, allRules);
+      let results = engine.run(nodes, rules);
 
       // Filter to failures only if quiet mode
       if (options.quiet) {
@@ -43,7 +74,7 @@ program
 
       // Output results based on format
       if (options.format === 'sarif') {
-          console.log(generateSarif(results, filePath, allRules));
+          console.log(generateSarif(results, filePath, rules));
       } else {
           console.log(JSON.stringify(results, null, 2));
       }
@@ -55,7 +86,7 @@ program
       }
 
     } catch (error) {
-      console.error('Error processing file:', error instanceof Error ? error.message : error);
+      console.error('Error:', error instanceof Error ? error.message : error);
       process.exit(2);
     }
   });

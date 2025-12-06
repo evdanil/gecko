@@ -85,31 +85,49 @@ bun build packages/cli/index.ts --compile --outfile gecko.exe
 The compiled binary supports the following options:
 
 ```text
-Usage: gecko [options] <file>
+Usage: gecko [options] [file]
 
 Arguments:
-  file                   Path to the configuration file to scan
+  file                     Path to the configuration file to scan
 
 Options:
-  -f, --format <format>  Output format: "json" (default) or "sarif"
-  --ast                  Output the Abstract Syntax Tree (AST) instead of validation results
-  -V, --version          Output the version number
-  -h, --help             Display help for command
+  -f, --format <format>    Output format: "json" (default) or "sarif"
+  -q, --quiet              Only output failures (suppress passed results)
+  --ast                    Output the AST instead of validation results
+  -c, --config <path>      Path to config file (default: auto-detect)
+  --no-config              Ignore config file
+  -r, --rules <path>       Additional rules file to load
+  -d, --disable <ids>      Comma-separated rule IDs to disable
+  --list-rules             List all active rules and exit
+  -V, --version            Output the version number
+  -h, --help               Display help for command
 ```
 
 **Examples:**
 ```bash
 # Scan and output JSON (Default)
-.\gecko.exe network.conf
+gecko network.conf
 
 # Scan and generate SARIF report for CI/CD
-.\gecko.exe network.conf --format sarif > results.sarif
+gecko network.conf --format sarif > results.sarif
 
 # Inspect how GECKO parses a file (Debug mode)
-.\gecko.exe network.conf --ast
+gecko network.conf --ast
 
 # Quiet mode - only show failures
-.\gecko.exe network.conf --quiet
+gecko network.conf --quiet
+
+# List active rules (includes config file rules)
+gecko --list-rules
+
+# Disable specific rules via CLI
+gecko network.conf --disable NET-DOC-001,NET-SEC-003
+
+# Load additional proprietary rules
+gecko network.conf --rules ./my-rules.js
+
+# Ignore config file (use defaults only)
+gecko network.conf --no-config
 ```
 
 ### 5. VS Code Extension
@@ -145,6 +163,180 @@ code --install-extension packages/vscode/gecko-vscode-0.0.1.vsix
 - Right-click context menu for manual scans
 - Scan selected text only
 - Debug logging toggle (`GECKO: Toggle Debug Logging`)
+
+---
+
+## 🚀 CI/CD Integration
+
+GECKO supports configuration files and CLI options for integrating proprietary rules into CI/CD pipelines.
+
+### Configuration File
+
+Create a `gecko.config.js` (or `.geckorc.js`) in your project root:
+
+```javascript
+// gecko.config.js
+module.exports = {
+    // Include default rules (default: true)
+    includeDefaults: true,
+
+    // Disable specific default rules
+    disable: ['NET-DOC-001', 'NET-SEC-003'],
+
+    // Add proprietary/custom rules
+    rules: [
+        {
+            id: 'ACME-BGP-001',
+            selector: 'router bgp',
+            metadata: {
+                level: 'error',
+                obu: 'ACME Corp',
+                owner: 'Network Team',
+                remediation: 'All BGP sessions must use authentication.',
+            },
+            check: (node) => {
+                const hasPassword = node.children.some(c =>
+                    c.id.toLowerCase().includes('password')
+                );
+                return {
+                    passed: hasPassword,
+                    message: hasPassword
+                        ? 'BGP authentication configured'
+                        : 'BGP session missing authentication',
+                    ruleId: 'ACME-BGP-001',
+                    nodeId: node.id,
+                    level: 'error',
+                    loc: node.loc,
+                };
+            },
+        },
+    ],
+};
+```
+
+### External Rules File
+
+For larger rule sets, use a separate file:
+
+```javascript
+// rules/proprietary.js
+module.exports = [
+    { id: 'PROP-001', selector: 'interface', /* ... */ },
+    { id: 'PROP-002', selector: 'router ospf', /* ... */ },
+];
+```
+
+Reference it via CLI or config:
+```bash
+# Via CLI
+gecko network.conf --rules ./rules/proprietary.js
+
+# Or in gecko.config.js
+const propRules = require('./rules/proprietary.js');
+module.exports = {
+    rules: propRules,
+};
+```
+
+### GitHub Actions Example
+
+```yaml
+# .github/workflows/network-lint.yml
+name: Network Config Lint
+
+on:
+  push:
+    paths:
+      - '**.conf'
+      - '**.cfg'
+  pull_request:
+    paths:
+      - '**.conf'
+      - '**.cfg'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+
+      - name: Install GECKO
+        run: |
+          git clone https://github.com/your-org/gecko.git /tmp/gecko
+          cd /tmp/gecko && bun install
+          bun build packages/cli/index.ts --compile --outfile /usr/local/bin/gecko
+
+      - name: Lint configurations
+        run: |
+          gecko configs/*.conf --format sarif > results.sarif
+
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: results.sarif
+```
+
+### GitLab CI Example
+
+```yaml
+# .gitlab-ci.yml
+network-lint:
+  image: oven/bun:latest
+  script:
+    - git clone https://github.com/your-org/gecko.git /tmp/gecko
+    - cd /tmp/gecko && bun install
+    - bun run packages/cli/index.ts $CI_PROJECT_DIR/configs/router.conf --quiet
+  rules:
+    - changes:
+        - "**/*.conf"
+        - "**/*.cfg"
+```
+
+### Jenkins Pipeline Example
+
+```groovy
+// Jenkinsfile
+pipeline {
+    agent any
+    stages {
+        stage('Lint Network Configs') {
+            steps {
+                sh '''
+                    gecko configs/*.conf --format sarif > gecko-results.sarif
+                '''
+                recordIssues(tools: [sarif(pattern: 'gecko-results.sarif')])
+            }
+        }
+    }
+}
+```
+
+### Config File Search Order
+
+GECKO searches for config files starting from the scanned file's directory, walking up to the root:
+
+1. `gecko.config.ts`
+2. `gecko.config.js`
+3. `.geckorc.ts`
+4. `.geckorc.js`
+
+### Priority & Override Rules
+
+1. **Default rules** load first
+2. **Config file rules** override by ID
+3. **CLI `--rules`** override by ID
+4. **CLI `--disable`** takes final precedence
+
+```bash
+# Full override example: config + extra rules + disable some
+gecko network.conf \
+    --config ./strict-config.js \
+    --rules ./extra-rules.js \
+    --disable NET-DOC-001
+```
 
 ---
 
